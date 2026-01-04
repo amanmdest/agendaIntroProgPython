@@ -286,7 +286,7 @@ class DBAgenda:
     
     def lista(self): 
         consulta = self.conexão.execute( 
-            "select * from nomes order_by nome")
+            "select * from nomes order by nome;")
 
         for registro in consulta:
             yield self.carrega(registro)
@@ -327,12 +327,12 @@ class DBAgenda:
                                 id_tipo = ?, id_nome = ? where id = ?""",
                                 (telefone.número, telefone.tipo.id,
                                  registro.nome.id, telefone.id))
-                for apagado in registro.telefones.apagados:
-                    cur.execute("delete from telefones where id = ?", (apagado,))
-                self.conexão.commit()
-                registro.telefones.limpa()
+            for apagado in registro.telefones.apagados:
+                cur.execute("delete from telefones where id = ?", (apagado,))
+            self.conexão.commit()
+            registro.telefones.limpa()
         except Exception:
-            self.conexão.rollback
+            self.conexão.rollback()
             raise 
         finally:
             cur.close()
@@ -406,10 +406,9 @@ class AppAgenda:
         self.menu.adicionaopção('Altera', self.altera)
         self.menu.adicionaopção('Apaga', self.apaga)
         self.menu.adicionaopção('Lista', self.lista)
-        self.menu.adicionaopção('Ordena', self.ordena)
         self.ultimo_nome = None
 
-    def pede_tipo_telefone(self, padrão=None):
+    def pede_tipo_telefone(self, padrão=0):
         for i, tipo in enumerate(self.agenda.tiposTelefone):
             print(f' {i} - {tipo} ', end=None)
         t = valida_faixa_inteiro(
@@ -447,8 +446,6 @@ class AppAgenda:
             print('Nome não encontrado!')
             
     def altera(self):
-        if len(self.agenda) == 0:
-            print('Agenda vazia, nada a alterar')
         nome = AppAgenda.pede_nome()
         if nulo_ou_vazio(nome):
             return
@@ -459,8 +456,9 @@ class AppAgenda:
             print(f'Digite enter caso não queira alterar o nome')
             novo = AppAgenda.pede_nome()
             if not nulo_ou_vazio(novo):
-                p.nome = Nome(novo)
+                p.nome.nome = novo
             self.menu_telefones(p)
+            self.agenda.atualiza(p)
         else:
             print('Nome não encontrado!')
             
@@ -521,13 +519,9 @@ class AppAgenda:
     def lista(self):
         print('\nAgenda')
         print('-' * 60)
-        for e in self.agenda:
+        for e in self.agenda.lista():
             AppAgenda.mostra_dados(e)
         print('-' * 60)
-
-    def ordena(self):
-        self.agenda.ordena()
-        print('\nAgenda ordenada\n')
 
     def execute(self):
         self.menu.execute()
